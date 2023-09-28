@@ -1,0 +1,12 @@
+﻿{
+  "type": "code",
+  "side": "Universal",
+  "modid": "modcheck",
+  "name": "ModCheck",
+  "authors": [
+    "Yorokobii"
+  ],
+  "description": "Based on Novocain's Tegridy. Helps ensure that the client uses only mods approved by the server, including client-only mods.",
+  "version": "0.1.0",
+  "dependency": {}
+}

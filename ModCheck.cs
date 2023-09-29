@@ -27,6 +27,8 @@ namespace ModCheck
         internal IClientNetworkChannel? CChannel { get => channel as IClientNetworkChannel; }
         internal IServerNetworkChannel? SChannel { get => channel as IServerNetworkChannel; }
 
+        internal string? lastPlayer;
+
         internal AllowList allowList = new AllowList();
         internal ModCheckServerConfig config = new ModCheckServerConfig();
 
@@ -61,7 +63,10 @@ namespace ModCheck
         const string modProblems = @"ModCheck: Problems were found with your mods:";
         const string kickUnrecognized = @"ModCheck: Kicked {0} ({1} for the following unrecognized mod(s):";
         const string toAdd = @"To add all of the above mod fingerprints to the ModCheck allow list, trusting that {0}'s versions are untampered with, type:";
-        const string modcheckApprove = @"\modcheckapprove {0}";
+        const string modcheckApproveName = @"/modcheckapprove {0}";
+        const string modcheckApproveUid = @"/modcheckapproveuid {0}";
+        const string modcheckApproveLast = @"/modcheckapprovelast";
+        const string orString = @"or";
         const string kickNoMods = @"Your reports sent was empty, no bypass here!";
 
         public void StartPreServer(ICoreServerAPI? api)
@@ -157,6 +162,7 @@ namespace ModCheck
                     }
 
                     DisconnectPlayerWithFriendlyMessage(byPlayer, disconnectMsg.ToString());
+                    lastPlayer = byPlayer.PlayerUID;
                     api.Logger.Event(Lang.Get(kickUnrecognized, playerName, playerUID));
 
                     foreach (var modReport in unrecognizedReports)
@@ -164,7 +170,11 @@ namespace ModCheck
                         api.Logger.Event(modReport.GetString());
                     }
                     api.Logger.Event(string.Format(toAdd, byPlayer.PlayerName));
-                    api.Logger.Event(modcheckApprove, byPlayer.PlayerUID);
+                    api.Logger.Event(modcheckApproveName, byPlayer.PlayerName);
+                    api.Logger.Event(orString);
+                    api.Logger.Event(modcheckApproveUid, byPlayer.PlayerUID);
+                    api.Logger.Event(orString);
+                    api.Logger.Event(modcheckApproveLast);
                 }
 
                 api.ChatCommands.GetOrCreate("modcheckapprove")
@@ -174,30 +184,24 @@ namespace ModCheck
                         api.ChatCommands.Parsers.Word("player")
                     )
                     .HandleWith((TextCommandCallingArgs args) => {
-                        string name = (string)args.Parsers[0].GetValue();
+                        return approveAllByName(api, (string)args.Parsers[0].GetValue());
+                    });
 
-                        var data = api.PlayerData.GetPlayerDataByLastKnownName(name);
+                api.ChatCommands.GetOrCreate("modcheckapproveuid")
+                    .RequiresPrivilege(Privilege.root)
+                    .WithDescription("Approves all mod fingerprints a player was recently kicked for.")
+                    .WithArgs(
+                        api.ChatCommands.Parsers.Word("player")
+                    )
+                    .HandleWith((TextCommandCallingArgs args) => {
+                        return approveAllByUid(api, (string)args.Parsers[0].GetValue());
+                    });
 
-                        if (data == null) {
-                            return TextCommandResult.Error(string.Format("Could not find player with name {0}", name));
-                        }
-                        else {
-                            string uid = data!.PlayerUID;
-
-                            if (recentUnrecognizedReportsByUID.TryGetValue(uid, out var reportList))
-                            {
-                                foreach (var report in reportList)
-                                {
-                                    config.AllowedClientMods = config.AllowedClientMods.AddToArray(report);
-                                    allowList.AddReport(report);
-                                }
-                                return TextCommandResult.Success("Ok, added mods to list.");
-                            }
-                            else
-                            {
-                                return TextCommandResult.Error(string.Format("Unrecognized player UID '{0}'.", uid));
-                            }
-                        }
+                api.ChatCommands.GetOrCreate("modcheckapprovelast")
+                    .RequiresPrivilege(Privilege.root)
+                    .WithDescription("Approves all mod fingerprints of the last kicked player.")
+                    .HandleWith(_ => {
+                        return approveAllByUid(api, lastPlayer);
                     });
 
                 api.ChatCommands.GetOrCreate("modchecklongestgrace")
@@ -208,6 +212,33 @@ namespace ModCheck
                         return TextCommandResult.Success(string.Format("Longest Grace Required is {0} ms.", tmpLongestGraceRequired));
                     });
             });
+        }
+
+        private TextCommandResult approveAllByUid(ICoreServerAPI? api, string? playerUid) {
+            if (recentUnrecognizedReportsByUID.TryGetValue(playerUid!, out var reportList))
+            {
+                foreach (var report in reportList)
+                {
+                    config.AllowedClientMods = config.AllowedClientMods.AddToArray(report);
+                    allowList.AddReport(report);
+                }
+                return TextCommandResult.Success("Ok, added mods to list.");
+            }
+            else
+            {
+                return TextCommandResult.Error(string.Format("Unrecognized player UID '{0}'.", playerUid));
+            }
+        }
+
+        private TextCommandResult approveAllByName(ICoreServerAPI? api, string playerName) {
+            var data = api!.PlayerData.GetPlayerDataByLastKnownName(playerName);
+
+            if (data == null) {
+                return TextCommandResult.Error(string.Format("Could not find player with name {0}", playerName));
+            }
+            else {
+                return approveAllByUid(api, data!.PlayerUID);
+            }
         }
 
         private void DisconnectPlayerWithFriendlyMessage(IServerPlayer player, string message)

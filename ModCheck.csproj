@@ -1,84 +1,78 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
-    <!-- <ImplicitUsings>enable</ImplicitUsings> -->
-    <!-- <Nullable>enable</Nullable> -->
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <!-- <ImplicitUsings>enable</ImplicitUsings> -->
+        <!-- <Nullable>enable</Nullable> -->
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{46CAD324-8813-4B17-B944-F182801E0D87}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ModCheck</RootNamespace>
-    <AssemblyName>ModCheck</AssemblyName>
-    <TargetFramework>net7.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <FileAlignment>512</FileAlignment>
-    <Deterministic>true</Deterministic>
-    <Nullable>enable</Nullable>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>mods\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>mods\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
+    <PropertyGroup>
+        <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+        <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+        <ProjectGuid>{46CAD324-8813-4B17-B944-F182801E0D87}</ProjectGuid>
+        <OutputType>Library</OutputType>
+        <AppDesignerFolder>Properties</AppDesignerFolder>
+        <RootNamespace>ModCheck</RootNamespace>
+        <AssemblyName>ModCheck</AssemblyName>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <FileAlignment>512</FileAlignment>
+        <Deterministic>true</Deterministic>
+        <Nullable>enable</Nullable>
+        <NuGetPackageImportStamp>
+        </NuGetPackageImportStamp>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <Reference Include="0Harmony">
-      <HintPath>\usr\share\vintagestory\Lib\0Harmony.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>\usr\share\vintagestory\Lib\Newtonsoft.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="protobuf-net">
-      <HintPath>\usr\share\vintagestory\Lib\protobuf-net.dll</HintPath>
-    </Reference>
-    <!-- <Reference Include="System" /> -->
-    <!-- <Reference Include="System.Core" /> -->
-    <!-- <Reference Include="System.Runtime" /> -->
-    <!-- <Reference Include="System.Xml.Linq" /> -->
-    <!-- <Reference Include="System.Data.DataSetExtensions" /> -->
-    <!-- <Reference Include="Microsoft.CSharp" /> -->
-    <!-- <Reference Include="System.Data" /> -->
-    <!-- <Reference Include="netstandard" /> -->
-    <!-- <Reference Include="System.Net.Http" /> -->
-    <!-- <Reference Include="System.Xml" /> -->
-    <Reference Include="VintagestoryLib">
-      <HintPath>\usr\share\vintagestory\VintagestoryLib.dll</HintPath>
-    </Reference>
-    <Reference Include="VintagestoryAPI">
-      <HintPath>\usr\share\vintagestory\VintagestoryAPI.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+    <ItemGroup Condition="'$(Configuration)' == 'Release'">
+        <None Include="resources/**">
+            <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 
-  <ItemGroup>
-    <None Include="packages.config" />
-    <None Include="resources/modinfo.json" />
-  </ItemGroup>
+    <Target Name="Package" AfterTargets="PostBuildEvent" Condition="'$(Configuration)' == 'Release'">
+        <ZipDirectory DestinationFile="bin/$(TargetName)-UNVERSIONED.zip" SourceDirectory="$(TargetDir)" Overwrite="true" />
+    </Target>
 
-  <!-- <Import Project="packages\Confuser.MSBuild.1.6.0\build\Confuser.MSBuild.targets" Condition="Exists('packages\Confuser.MSBuild.1.6.0\build\Confuser.MSBuild.targets')" /> -->
+    <ItemGroup>
+        <Reference Include="0Harmony">
+            <HintPath>\usr\share\vintagestory\Lib\0Harmony.dll</HintPath>
+        </Reference>
+        <Reference Include="Newtonsoft.Json">
+            <HintPath>\usr\share\vintagestory\Lib\Newtonsoft.Json.dll</HintPath>
+        </Reference>
+        <Reference Include="protobuf-net">
+            <HintPath>\usr\share\vintagestory\Lib\protobuf-net.dll</HintPath>
+        </Reference>
+        <!-- <Reference Include="System" /> -->
+        <!-- <Reference Include="System.Core" /> -->
+        <!-- <Reference Include="System.Runtime" /> -->
+        <!-- <Reference Include="System.Xml.Linq" /> -->
+        <!-- <Reference Include="System.Data.DataSetExtensions" /> -->
+        <!-- <Reference Include="Microsoft.CSharp" /> -->
+        <!-- <Reference Include="System.Data" /> -->
+        <!-- <Reference Include="netstandard" /> -->
+        <!-- <Reference Include="System.Net.Http" /> -->
+        <!-- <Reference Include="System.Xml" /> -->
+        <Reference Include="VintagestoryLib">
+            <HintPath>\usr\share\vintagestory\VintagestoryLib.dll</HintPath>
+        </Reference>
+        <Reference Include="VintagestoryAPI">
+            <HintPath>\usr\share\vintagestory\VintagestoryAPI.dll</HintPath>
+        </Reference>
+    </ItemGroup>
 
-  <!-- <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild"> -->
-  <!--   <PropertyGroup> -->
-  <!--     <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText> -->
-  <!--   </PropertyGroup> -->
-  <!--   <Error Condition="!Exists('packages\Confuser.MSBuild.1.6.0\build\Confuser.MSBuild.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Confuser.MSBuild.1.6.0\build\Confuser.MSBuild.targets'))" /> -->
-  <!-- </Target> -->
+    <ItemGroup>
+        <None Include="packages.config" />
+        <None Include="resources/modinfo.json" />
+    </ItemGroup>
+
+    <!-- <Import Project="packages\Confuser.MSBuild.1.6.0\build\Confuser.MSBuild.targets" Condition="Exists('packages\Confuser.MSBuild.1.6.0\build\Confuser.MSBuild.targets')" /> -->
+
+    <!-- <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild"> -->
+    <!--   <PropertyGroup> -->
+    <!--     <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText> -->
+    <!--   </PropertyGroup> -->
+    <!--   <Error Condition="!Exists('packages\Confuser.MSBuild.1.6.0\build\Confuser.MSBuild.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Confuser.MSBuild.1.6.0\build\Confuser.MSBuild.targets'))" /> -->
+    <!-- </Target> -->
 
 </Project>

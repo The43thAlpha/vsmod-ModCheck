@@ -65,7 +65,7 @@ namespace ModCheck
 
         internal bool HasErrors(ModCheckReport report, out string errors)
         {
-            errors = null;
+            errors = "";
             EnumProblemFlags flags = GetReportProblem(report);
             
             if (flags != EnumProblemFlags.None)

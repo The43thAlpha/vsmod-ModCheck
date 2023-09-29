@@ -19,7 +19,7 @@ namespace ModCheck
             { @"allowedClientMods",         @"1.0.0"},
         };
 
-        private ICoreServerAPI sapi;
+        private ICoreServerAPI? sapi = null!;
 
         [JsonProperty]
         private int? clientReportGraceSeconds = 15;
@@ -36,14 +36,18 @@ namespace ModCheck
         [JsonProperty]
         private string helpLink = "";
 
-        public ModCheckServerConfig(ICoreServerAPI sapi)
+        public ModCheckServerConfig() { }
+
+        public void setApi(ICoreServerAPI? sapi)
         {
-            this.sapi = sapi;
+            if(sapi != null) {
+                this.sapi = sapi;
+            }
         }
 
         public int ClientReportGraceSeconds
         {
-            get { Load(); return clientReportGraceSeconds.Value; }
+            get { Load(); return clientReportGraceSeconds!.Value; }
             set { clientReportGraceSeconds = value; Save(); }
         }
 
@@ -72,42 +76,45 @@ namespace ModCheck
 
         public void Save()
         {
-            sapi.StoreModConfig(this, "modcheck/server.json");
+            if(sapi != null) {
+                sapi.StoreModConfig(this, "modcheck/server.json");
+            }
         }
 
         public void Load()
         {
             try
             {
-                var newConfig = new ModCheckServerConfig(sapi);
+                var newConfig = new ModCheckServerConfig();
+                newConfig.setApi(sapi);
 
-                var conf = sapi.LoadModConfig<ModCheckServerConfig>("modcheck/server.json") ?? newConfig;
+                var conf = sapi?.LoadModConfig<ModCheckServerConfig>("modcheck/server.json") ?? newConfig;
 
-                clientReportGraceSeconds = conf.clientReportGraceSeconds ?? newConfig.ClientReportGraceSeconds;
-                allowedClientMods = conf.allowedClientMods ?? newConfig.allowedClientMods;
-                configVersionByField = conf.configVersionByField ?? newConfig.configVersionByField;
-                helpLink = conf.helpLink ?? newConfig.helpLink; 
+                clientReportGraceSeconds = conf?.clientReportGraceSeconds ?? newConfig.ClientReportGraceSeconds;
+                allowedClientMods = conf?.allowedClientMods ?? newConfig.allowedClientMods;
+                configVersionByField = conf?.configVersionByField ?? newConfig.configVersionByField;
+                helpLink = conf?.helpLink ?? newConfig.helpLink; 
                 var fieldNames = AccessTools.GetFieldNames(this);
                 fieldNames.Remove("sapi");
                 fieldNames.Remove("Versions");
                 
                 foreach (string field in fieldNames)
                 {
-                    if (Versions.TryGetValue(field, out string version0) && configVersionByField.TryGetValue(field, out string version1))
+                    if (Versions.TryGetValue(field, out string? version0) && configVersionByField.TryGetValue(field, out string? version1))
                     {
                         var v0 = Version.Parse(version0);
                         var v1 = Version.Parse(version1);
                         if (v0 > v1)
                         {
                             this.SetField(field, newConfig.GetField<object>(field));
-                            conf.configVersionByField[field] = version0;
+                            conf!.configVersionByField[field] = version0;
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                sapi.Logger.Error("Malformed ModConfig file modcheck/server.json, Exception: \n {0}", ex.StackTrace);
+                sapi!.Logger.Error("Malformed ModConfig file modcheck/server.json, Exception: \n {0}", ex.StackTrace);
             }
         }
     }

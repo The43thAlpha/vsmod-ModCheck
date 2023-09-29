@@ -9,10 +9,10 @@ namespace ModCheck
     internal class HarmonyPatcher : ModSystem
     {
         private const string patchCode = "ModSystem";
-        public string sidedPatchCode;
+        public string sidedPatchCode = "";
 
-        public Harmony harmonyInstance;
-        private static bool harmonyPatched;
+        public Harmony? harmonyInstance;
+        private static bool harmonyPatched = false;
 
         public override double ExecuteOrder() => double.MinValue;
         public override void StartPre(ICoreAPI api)

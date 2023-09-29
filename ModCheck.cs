@@ -23,12 +23,13 @@ namespace ModCheck
     {
         public override double ExecuteOrder() => double.NegativeInfinity;
 
-        internal INetworkChannel channel;
-        internal IClientNetworkChannel CChannel { get => channel as IClientNetworkChannel; }
-        internal IServerNetworkChannel SChannel { get => channel as IServerNetworkChannel; }
+        internal INetworkChannel? channel = null;
+        internal IClientNetworkChannel? CChannel { get => channel as IClientNetworkChannel; }
+        internal IServerNetworkChannel? SChannel { get => channel as IServerNetworkChannel; }
 
         internal AllowList allowList = new AllowList();
-        internal ModCheckServerConfig config;
+        internal ModCheckServerConfig config = new ModCheckServerConfig();
+
         internal Dictionary<string, DateTime> nonReportingTimeByUID = new Dictionary<string, DateTime>();
         internal Dictionary<string, List<ModCheckReport>> recentUnrecognizedReportsByUID = new Dictionary<string, List<ModCheckReport>>();
         internal double tmpLongestGraceRequired = 0;
@@ -63,13 +64,13 @@ namespace ModCheck
         const string modcheckApprove = @"\modcheckapprove {0}";
         const string kickNoMods = @"Your reports sent was empty, no bypass here!";
 
-        public void StartPreServer(ICoreServerAPI api)
+        public void StartPreServer(ICoreServerAPI? api)
         {
-            config = new ModCheckServerConfig(api);
+            config.setApi(api);
             config.Load();
             config.Save();
 
-            foreach (var serverMod in api.ModLoader.Mods)
+            foreach (var serverMod in api!.ModLoader.Mods)
             {
                 allowList.AddReport(ModCheckReport.Create(serverMod));
             }
@@ -79,7 +80,7 @@ namespace ModCheck
                 allowList.AddReport(allowed);
             }
 
-            api.Event.PlayerNowPlaying += (IServerPlayer player) => 
+            api!.Event.PlayerNowPlaying += (IServerPlayer player) => 
             {
                 nonReportingTimeByUID.Add(player.PlayerUID, DateTime.Now);
                 recentUnrecognizedReportsByUID.Remove(player.PlayerUID);
@@ -99,7 +100,7 @@ namespace ModCheck
                 nonReportingTimeByUID.Remove(player.PlayerUID);
             };
 
-            SChannel.SetMessageHandler((IServerPlayer byPlayer, ModCheckPacket packet) =>
+            SChannel!.SetMessageHandler((IServerPlayer byPlayer, ModCheckPacket packet) =>
             {
                 if (packet.Reports.Count == 0)
                 {
@@ -166,33 +167,46 @@ namespace ModCheck
                     api.Logger.Event(modcheckApprove, byPlayer.PlayerUID);
                 }
 
-                api.RegisterCommand("modcheckapprove", "Approves all mod fingerprints a player was recently kicked for.", "/modcheckapprove PlayerName", (player, id, args) =>
-                {
-                    string name = args.PopWord();
-                    var data = api.PlayerData.GetPlayerDataByLastKnownName(name);
-                    if (data == null) return;
+                api.ChatCommands.GetOrCreate("modcheckapprove")
+                    .RequiresPrivilege(Privilege.root)
+                    .WithDescription("Approves all mod fingerprints a player was recently kicked for.")
+                    .WithArgs(
+                        api.ChatCommands.Parsers.Word("player")
+                    )
+                    .HandleWith((TextCommandCallingArgs args) => {
+                        string name = (string)args.Parsers[0].GetValue();
 
-                    string uid = data.PlayerUID;
+                        var data = api.PlayerData.GetPlayerDataByLastKnownName(name);
 
-                    if (recentUnrecognizedReportsByUID.TryGetValue(uid, out var reportList))
-                    {
-                        foreach (var report in reportList)
-                        {
-                            config.AllowedClientMods = config.AllowedClientMods.AddToArray(report);
-                            allowList.AddReport(report);
+                        if (data == null) {
+                            return TextCommandResult.Error(string.Format("Could not find player with name {0}", name));
                         }
-                        player.SendMessage(GlobalConstants.GeneralChatGroup, "Ok, added mods to list.", EnumChatType.OwnMessage);
-                    }
-                    else
-                    {
-                        player.SendMessage(GlobalConstants.GeneralChatGroup, string.Format("Unrecognized player UID '{0}'.", uid), EnumChatType.OwnMessage);
-                    }
-                }, Privilege.root);
+                        else {
+                            string uid = data!.PlayerUID;
 
-                api.RegisterCommand("modchecklongestgrace", "Shows longest grace time required for a player to join.", "/regridylongestgrace", (player, id, args) =>
-                {
-                    player.SendMessage(GlobalConstants.GeneralChatGroup, string.Format("Longest Grace Required is {0} ms.", tmpLongestGraceRequired), EnumChatType.OwnMessage);
-                }, Privilege.chat);
+                            if (recentUnrecognizedReportsByUID.TryGetValue(uid, out var reportList))
+                            {
+                                foreach (var report in reportList)
+                                {
+                                    config.AllowedClientMods = config.AllowedClientMods.AddToArray(report);
+                                    allowList.AddReport(report);
+                                }
+                                return TextCommandResult.Success("Ok, added mods to list.");
+                            }
+                            else
+                            {
+                                return TextCommandResult.Error(string.Format("Unrecognized player UID '{0}'.", uid));
+                            }
+                        }
+                    });
+
+                api.ChatCommands.GetOrCreate("modchecklongestgrace")
+                    .RequiresPrivilege(Privilege.chat)
+                    .WithDescription("Shows longest grace time required for a player to join.")
+                    .RequiresPlayer()
+                    .HandleWith(_ => {
+                        return TextCommandResult.Success(string.Format("Longest Grace Required is {0} ms.", tmpLongestGraceRequired));
+                    });
             });
         }
 
@@ -203,10 +217,10 @@ namespace ModCheck
             server.DisconnectPlayer(client, message, message);
         }
 
-        public void StartPreClient(ICoreClientAPI api)
+        public void StartPreClient(ICoreClientAPI? api)
         {
             ModCheckPacket packet = new ModCheckPacket();
-            foreach (var mod in api.ModLoader.Mods)
+            foreach (var mod in api!.ModLoader.Mods)
             {
                 ModCheckReport report = ModCheckReport.Create(mod);
                 packet.AddReport(report);
@@ -214,7 +228,7 @@ namespace ModCheck
 
             api.Event.IsPlayerReady += (ref EnumHandling handling) =>
             {
-                CChannel.SendPacket(packet);
+                CChannel!.SendPacket(packet);
                 return true;
             };
         }

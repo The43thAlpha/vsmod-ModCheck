@@ -25,14 +25,19 @@ your own server, get kicked, then type the `/modcheckapprovelast`
 command in the server console to add all your enabled client-side mods.
 
 If several players joined at the same time you can copy-paste the
-`/modcheckapprove myPlayerUID` command from the server console to add all the
+`/modcheckapproveuid <playerUID>` command from the server console to add all the
 player's enabled client-side mods.
 
-## New from Tegridy
+## Commands
 
-- `/modcheckapprovelast` command: Approves all the mods from the last connected user
-- `/modcheckapproveuid <uid>` command: Approves all the mods from the player
-with the given uid
+- `/modcheckapprove <playerName>`: Approves all the mods from the player
+with the given name (eg: `/modcheckapprove XxVintageMasterxX`)
+
+### New from Tegridy
+
+- `/modcheckapprovelast`: Approves all the mods from the last connected user
+- `/modcheckapproveuid <uid>`: Approves all the mods from the player
+with the given uid (eg. `/modcheckapproveuid p/hoi<sd!89jk9fw`)
 
 ## TODO
 

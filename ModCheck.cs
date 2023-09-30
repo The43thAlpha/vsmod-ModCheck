@@ -170,9 +170,9 @@ namespace ModCheck
                         api.Logger.Event(modReport.GetString());
                     }
                     api.Logger.Event(string.Format(toAdd, byPlayer.PlayerName));
-                    api.Logger.Event(modcheckApproveName, byPlayer.PlayerName);
-                    api.Logger.Event(orString);
                     api.Logger.Event(modcheckApproveUid, byPlayer.PlayerUID);
+                    api.Logger.Event(orString);
+                    api.Logger.Event(modcheckApproveName, byPlayer.PlayerName);
                     api.Logger.Event(orString);
                     api.Logger.Event(modcheckApproveLast);
                 }

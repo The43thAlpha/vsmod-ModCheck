@@ -9,4 +9,6 @@ rm ModCheck-UNVERSIONED.zip || exit
 cd ModCheck || exit
 version="$(jq ".version" -r < modinfo.json)"
 zip ../ModCheck-"$version".zip ModCheck.* modinfo.json || exit
+rm /usr/share/vintagestory-server/Mods/ModCheck-*
+cp ../ModCheck-"$version".zip /usr/share/vintagestory-server/Mods/
 cd ../.. || exit

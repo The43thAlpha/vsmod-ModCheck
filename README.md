@@ -33,7 +33,7 @@ player's enabled client-side mods.
 - `/modcheckapprove <playerName>`: Approves all the mods from the player
 with the given name (eg: `/modcheckapprove XxVintageMasterxX`)
 
-### New from Tegridy
+### New since Tegridy
 
 - `/modcheckapprovelast`: Approves all the mods from the last connected user
 - `/modcheckapproveuid <uid>`: Approves all the mods from the player

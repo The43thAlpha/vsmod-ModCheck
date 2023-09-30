@@ -15,6 +15,7 @@ namespace ModCheck
         {
             { @"configVersionByField",      @"1.0.0"},
             { @"clientReportGraceSeconds",  @"1.0.0"},
+            { @"clientApproveGraceSeconds",  @"1.0.0"},
             { @"extraDisconnectMessage",    @"1.0.0"},
             { @"allowedClientMods",         @"1.0.0"},
         };
@@ -23,6 +24,9 @@ namespace ModCheck
 
         [JsonProperty]
         private int? clientReportGraceSeconds = 15;
+
+        [JsonProperty]
+        private int? clientApproveGraceSeconds = 30;
 
         [JsonProperty]
         private string extraDisconnectMessage = @"Please contact the server owner with any problems or to request new mods be added to the whitelist.";
@@ -43,6 +47,12 @@ namespace ModCheck
             if(sapi != null) {
                 this.sapi = sapi;
             }
+        }
+
+        public int ClientApproveGraceSeconds
+        {
+            get { Load(); return clientApproveGraceSeconds!.Value; }
+            set { clientApproveGraceSeconds = value; Save(); }
         }
 
         public int ClientReportGraceSeconds

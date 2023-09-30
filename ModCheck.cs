@@ -34,6 +34,7 @@ namespace ModCheck
 
         internal Dictionary<string, DateTime> nonReportingTimeByUID = new Dictionary<string, DateTime>();
         internal Dictionary<string, List<ModCheckReport>> recentUnrecognizedReportsByUID = new Dictionary<string, List<ModCheckReport>>();
+        internal List<string> playersToKick = new List<string>();
         internal double tmpLongestGraceRequired = 0;
 
         public override void StartPre(ICoreAPI api)
@@ -55,19 +56,27 @@ namespace ModCheck
             }
         }
         
-        const string kickTooLong = @"ModCheck: Kicking {0} ({1}) for taking too long to report mods. To change timeout, change 'clientReportGraceSeconds' in modcheck/server.json";
+        class Logs {
+            // Server side console logs
+            public static string receivedPacket = @"ModCheck: Received a packet from {0} ({1}) after {2} ms";
+            public static string noTime = @"ModCheck: Internal Error. Packet received from {0} ({1}), but no time was recorded.";
 
-        const string receivedPacket = @"ModCheck: Received a packet from {0} ({1}) after {2} ms";
-        const string noTime = @"ModCheck: Internal Error. Packet received from {0} ({1}), but no time was recorded.";
+            // Client side logs
+            public static string modProblems = @"ModCheck: Problems were found with your mods:";
+            public static string kickNoMods = @"Your reports sent was empty, no bypass here!";
 
-        const string modProblems = @"ModCheck: Problems were found with your mods:";
-        const string kickUnrecognized = @"ModCheck: Kicked {0} ({1} for the following unrecognized mod(s):";
-        const string toAdd = @"To add all of the above mod fingerprints to the ModCheck allow list, trusting that {0}'s versions are untampered with, type:";
-        const string modcheckApproveName = @"/modcheckapprove {0}";
-        const string modcheckApproveUid = @"/modcheckapproveuid {0}";
-        const string modcheckApproveLast = @"/modcheckapprovelast";
-        const string orString = @"or";
-        const string kickNoMods = @"Your reports sent was empty, no bypass here!";
+            // Server side chat logs
+            public static string kickTooLong = @"ModCheck: Kicking {0} ({1}) for taking too long to report mods. To change timeout, change 'clientReportGraceSeconds' in modcheck/server.json";
+            public static string kickNotApproved = @"ModCheck: Kicking {0} ({1}) because no mod approved their mod list. To change timeout, change 'clientApproveGraceSeconds' in modcheck/server.json";
+
+            public static string modsUnrecognized = @"ModCheck: {0} ({1}) connected with the following unrecognized mod(s):";
+            public static string toAdd = @"To add all of the above mod fingerprints to the ModCheck allow list, trusting that {0}'s versions are untampered with, type:";
+            public static string modcheckApproveName = @"/modcheckapprove {0}";
+            public static string modcheckApproveUid = @"/modcheckapproveuid {0}";
+            public static string modcheckApproveLast = @"/modcheckapprovelast";
+            public static string orString = @"or";
+            public static string kickTimeout = @"The player {0} ({1}) will be kicked in {2} seconds otherwise.";
+        }
 
         public void StartPreServer(ICoreServerAPI? api)
         {
@@ -94,7 +103,7 @@ namespace ModCheck
                     if (nonReportingTimeByUID.ContainsKey(player.PlayerUID))
                     {
                         nonReportingTimeByUID.Remove(player.PlayerUID);
-                        api.Logger.Event(string.Format(kickTooLong, player.PlayerName, player.PlayerUID));
+                        api.Logger.Event(Logs.kickTooLong, player.PlayerName, player.PlayerUID);
 
                         DisconnectPlayerWithFriendlyMessage(player, "ModCheck: Timed out waiting for your client's report. Please try again?");
                     }
@@ -109,19 +118,19 @@ namespace ModCheck
             {
                 if (packet.Reports.Count == 0)
                 {
-                    DisconnectPlayerWithFriendlyMessage(byPlayer, kickNoMods);
+                    DisconnectPlayerWithFriendlyMessage(byPlayer, Logs.kickNoMods);
                     return;
                 }
 
                 if (nonReportingTimeByUID.TryGetValue(byPlayer.PlayerUID, out var startTime))
                 {
                     double totalMs = (DateTime.Now - startTime).TotalMilliseconds;
-                    api.Logger.Event(string.Format(receivedPacket, byPlayer.PlayerName, byPlayer.PlayerUID, totalMs));
+                    api.Logger.Event(string.Format(Logs.receivedPacket, byPlayer.PlayerName, byPlayer.PlayerUID, totalMs));
                     tmpLongestGraceRequired = Math.Max(tmpLongestGraceRequired, totalMs);
                 }
                 else
                 {
-                    api.Logger.Error(string.Format(noTime, byPlayer.PlayerName, byPlayer.PlayerUID));
+                    api.Logger.Error(string.Format(Logs.noTime, byPlayer.PlayerName, byPlayer.PlayerUID));
                     return;
                 }
 
@@ -142,10 +151,8 @@ namespace ModCheck
                 if (unrecognizedReports.Count > 0)
                 {
                     recentUnrecognizedReportsByUID.Add(byPlayer.PlayerUID, unrecognizedReports);
-                    string playerName = byPlayer.PlayerName;
-                    string playerUID = byPlayer.PlayerUID;
                     
-                    StringBuilder disconnectMsg = new StringBuilder(Lang.Get(modProblems));
+                    StringBuilder disconnectMsg = new StringBuilder(Lang.Get(Logs.modProblems));
 
                     disconnectMsg.AppendLine();
 
@@ -161,20 +168,29 @@ namespace ModCheck
                         disconnectMsg.Append(string.Format("Contact Server At: {0}", config.HelpLink));
                     }
 
-                    DisconnectPlayerWithFriendlyMessage(byPlayer, disconnectMsg.ToString());
-                    lastPlayer = byPlayer.PlayerUID;
-                    api.Logger.Event(Lang.Get(kickUnrecognized, playerName, playerUID));
+                    api.World.RegisterCallback(_ => {
+                        if (playersToKick.Contains(byPlayer.PlayerUID))
+                        {
+                            playersToKick.Remove(byPlayer.PlayerUID);
+                            api.Logger.Event(Logs.kickNotApproved, byPlayer.PlayerName, byPlayer.PlayerUID);
 
+                            DisconnectPlayerWithFriendlyMessage(byPlayer, disconnectMsg.ToString());
+                        }
+                    }, 1000 * config.ClientApproveGraceSeconds);
+                    lastPlayer = byPlayer.PlayerUID;
+
+                    api.Logger.Event(Logs.modsUnrecognized, byPlayer.PlayerName, byPlayer.PlayerUID);
                     foreach (var modReport in unrecognizedReports)
                     {
                         api.Logger.Event(modReport.GetString());
                     }
-                    api.Logger.Event(string.Format(toAdd, byPlayer.PlayerName));
-                    api.Logger.Event(modcheckApproveUid, byPlayer.PlayerUID);
-                    api.Logger.Event(orString);
-                    api.Logger.Event(modcheckApproveName, byPlayer.PlayerName);
-                    api.Logger.Event(orString);
-                    api.Logger.Event(modcheckApproveLast);
+                    api.Logger.Event(Logs.toAdd, byPlayer.PlayerName);
+                    api.Logger.Event(Logs.modcheckApproveUid, byPlayer.PlayerUID);
+                    api.Logger.Event(Logs.orString);
+                    api.Logger.Event(Logs.modcheckApproveName, byPlayer.PlayerName);
+                    api.Logger.Event(Logs.orString);
+                    api.Logger.Event(Logs.modcheckApproveLast);
+                    api.Logger.Event(Logs.kickTimeout, byPlayer.PlayerName, byPlayer.PlayerUID, config.ClientApproveGraceSeconds);
                 }
 
                 api.ChatCommands.GetOrCreate("modcheckapprove")

@@ -30,8 +30,9 @@ player's enabled client-side mods.
 
 ## New from Tegridy
 
-- `/modcheckapprovelast` command
-- `/modcheckapproveuid` command
+- `/modcheckapprovelast` command: Approves all the mods from the last connected user
+- `/modcheckapproveuid <uid>` command: Approves all the mods from the player
+with the given uid
 
 ## TODO
 

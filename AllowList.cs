@@ -28,7 +28,6 @@ namespace ModCheck
             {
                 foreach (var allowed in modcheckReports)
                 {
-                    flags = EnumProblemFlags.All;
                     flags &= ~EnumProblemFlags.UnrecognizedModId;
                     flags &= ~EnumProblemFlags.EmptyReports;
 

@@ -32,19 +32,17 @@ player's enabled client-side mods.
 
 - `/modcheckapprove <playerName>`: Approves all the mods from the player
 with the given name (eg: `/modcheckapprove XxVintageMasterxX`)
+- `/modchecklongestgrace`: Shows longest grace time required for a player to join.
 
 ### New since Tegridy
 
 - `/modcheckapprovelast`: Approves all the mods from the last connected user
 - `/modcheckapproveuid <uid>`: Approves all the mods from the player
 with the given uid (eg. `/modcheckapproveuid p/hoi<sd!89jk9fw`)
-
-## TODO
-
-- Timer (30s) for the admin to allow a client's mods before kicking
-- Individual mods whitelist
-- Individual mods Blacklist
-- Instant kick on blacklisted mod enabled
+- `/modcheckwhitelistmod <id>`: Whitelists the mod with the given id so that
+players joining with any version of this mod won't get kicked
+- `/modcheckblacklistmod <id>`: Blacklists the mod with the given id so that
+players joining with any version of this mod instantly get kicked
 
 ## Disconnect Messages
 

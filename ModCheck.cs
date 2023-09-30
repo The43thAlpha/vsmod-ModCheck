@@ -13,7 +13,7 @@ using Vintagestory.Server;
 [assembly: ModInfo("ModCheck", 
     Side = "Universal",
     Description = "Ensures that clients only use mods approved by a server, including client-only mods.",
-    Version = "0.1.0",
+    Version = "0.3.0",
     Authors = new[] { "goxmeor", "Novocain", "Yorokobii" }
     )]
 
@@ -30,6 +30,8 @@ namespace ModCheck
         internal string? lastPlayer;
 
         internal AllowList allowList = new AllowList();
+        internal List<string> blacklist = new List<string>();
+        internal List<string> whitelist = new List<string>();
         internal ModCheckServerConfig config = new ModCheckServerConfig();
 
         internal Dictionary<string, DateTime> nonReportingTimeByUID = new Dictionary<string, DateTime>();
@@ -64,6 +66,7 @@ namespace ModCheck
             // Client side logs
             public static string modProblems = @"ModCheck: Problems were found with your mods:";
             public static string kickNoMods = @"Your reports sent was empty, no bypass here!";
+            public static string reportTimeout = @"ModCheck: Timed out waiting for your client's report. Please try again?";
 
             // Server side chat logs
             public static string kickTooLong = @"ModCheck: Kicking {0} ({1}) for taking too long to report mods. To change timeout, change 'clientReportGraceSeconds' in modcheck/server.json";
@@ -76,6 +79,8 @@ namespace ModCheck
             public static string modcheckApproveLast = @"/modcheckapprovelast";
             public static string orString = @"or";
             public static string kickTimeout = @"The player {0} ({1}) will be kicked in {2} seconds otherwise.";
+
+            public static string blacklistKick = @"Player {0} kicked for using the following blacklisted mods:";
         }
 
         public void StartPreServer(ICoreServerAPI? api)
@@ -105,7 +110,7 @@ namespace ModCheck
                         nonReportingTimeByUID.Remove(player.PlayerUID);
                         api.Logger.Event(Logs.kickTooLong, player.PlayerName, player.PlayerUID);
 
-                        DisconnectPlayerWithFriendlyMessage(player, "ModCheck: Timed out waiting for your client's report. Please try again?");
+                        DisconnectPlayerWithFriendlyMessage(player, Logs.reportTimeout);
                     }
                 }, 1000 * config.ClientReportGraceSeconds);
             };
@@ -138,17 +143,33 @@ namespace ModCheck
 
                 var unrecognizedReports = new List<ModCheckReport>();
                 var modIssuesForClient = new List<string>();
+                var blacklistedMods = new List<string>();
 
                 foreach (var report in packet.Reports)
                 {
-                    if (allowList.HasErrors(report, out string errors))
+                    if (blacklist.Contains(report.Id)) {
+                        blacklistedMods.Add(report.Id);
+                    }
+
+                    if (!whitelist.Contains(report.Id) && allowList.HasErrors(report, out string errors))
                     {
                         unrecognizedReports.Add(report);
                         modIssuesForClient.Add(errors);
                     }
                 }
 
-                if (unrecognizedReports.Count > 0)
+                if (blacklistedMods.Count() != 0) {
+                    StringBuilder log = new StringBuilder(Logs.blacklistKick);
+                    foreach (string mod in blacklistedMods) {
+                        log.Append(string.Format(" {0},", mod));
+                    }
+
+                    api.Logger.Event(string.Format(log.ToString(), byPlayer.PlayerName));
+                    DisconnectPlayerWithFriendlyMessage(byPlayer, string.Format(log.ToString(), byPlayer.PlayerName));
+                    return;
+                }
+
+                if (unrecognizedReports.Count() > 0)
                 {
                     recentUnrecognizedReportsByUID.Add(byPlayer.PlayerUID, unrecognizedReports);
                     
@@ -195,7 +216,7 @@ namespace ModCheck
 
                 api.ChatCommands.GetOrCreate("modcheckapprove")
                     .RequiresPrivilege(Privilege.root)
-                    .WithDescription("Approves all mod fingerprints a player was recently kicked for.")
+                    .WithDescription("Approves all mod fingerprints of the player given as a parameter.")
                     .WithArgs(
                         api.ChatCommands.Parsers.Word("player")
                     )
@@ -205,7 +226,7 @@ namespace ModCheck
 
                 api.ChatCommands.GetOrCreate("modcheckapproveuid")
                     .RequiresPrivilege(Privilege.root)
-                    .WithDescription("Approves all mod fingerprints a player was recently kicked for.")
+                    .WithDescription("Approves all mod fingerprints of the player given as a parameter.")
                     .WithArgs(
                         api.ChatCommands.Parsers.Word("player")
                     )
@@ -215,9 +236,41 @@ namespace ModCheck
 
                 api.ChatCommands.GetOrCreate("modcheckapprovelast")
                     .RequiresPrivilege(Privilege.root)
-                    .WithDescription("Approves all mod fingerprints of the last kicked player.")
+                    .WithDescription("Approves all mod fingerprints of the last player that joined.")
                     .HandleWith(_ => {
                         return approveAllByUid(api, lastPlayer);
+                    });
+
+                api.ChatCommands.GetOrCreate("modcheckblacklistmod")
+                    .RequiresPrivilege(Privilege.root)
+                    .WithDescription("Blacklist the mod with the id given as parameter")
+                    .WithArgs(
+                        api.ChatCommands.Parsers.Word("id")
+                    )
+                    .HandleWith((TextCommandCallingArgs args) => {
+                        string id = (string)args.Parsers[0].GetValue();
+
+                        blacklist.Add(id);
+
+                        string log = "Blacklisted mod with id {0}.";
+                        api.Logger.Event(log, id);
+                        return TextCommandResult.Success(string.Format(log, id));
+                    });
+
+                api.ChatCommands.GetOrCreate("modcheckwhitelistmod")
+                    .RequiresPrivilege(Privilege.root)
+                    .WithDescription("Whitelist the mod with the id given as parameter")
+                    .WithArgs(
+                        api.ChatCommands.Parsers.Word("id")
+                    )
+                    .HandleWith((TextCommandCallingArgs args) => {
+                        string id = (string)args.Parsers[0].GetValue();
+
+                        whitelist.Add(id);
+
+                        string log = "Whitelisted mod with id {0}.";
+                        api.Logger.Event(log, id);
+                        return TextCommandResult.Success(string.Format(log, id));
                     });
 
                 api.ChatCommands.GetOrCreate("modchecklongestgrace")

@@ -13,7 +13,7 @@ using Vintagestory.Server;
 [assembly: ModInfo("ModCheck", 
     Side = "Universal",
     Description = "Ensures that clients only use mods approved by a server, including client-only mods.",
-    Version = "0.3.0",
+    Version = "0.3.1",
     Authors = new[] { "goxmeor", "Novocain", "Yorokobii" }
     )]
 
@@ -70,15 +70,14 @@ namespace ModCheck
 
             // Server side chat logs
             public static string kickTooLong = @"ModCheck: Kicking {0} ({1}) for taking too long to report mods. To change timeout, change 'clientReportGraceSeconds' in modcheck/server.json";
-            public static string kickNotApproved = @"ModCheck: Kicking {0} ({1}) because no mod approved their mod list. To change timeout, change 'clientApproveGraceSeconds' in modcheck/server.json";
+            public static string kickNotApproved = @"ModCheck: Kicking {0} ({1}) because no moderator approved their mod list. To change timeout, change 'clientApproveGraceSeconds' in modcheck/server.json";
 
             public static string modsUnrecognized = @"ModCheck: {0} ({1}) connected with the following unrecognized mod(s):";
-            public static string toAdd = @"To add all of the above mod fingerprints to the ModCheck allow list, trusting that {0}'s versions are untampered with, type:";
+            public static string toAdd = @"To add all of the above mod fingerprints to the ModCheck allow list, trusting that {0}'s versions are untampered with, type on of the following commands:";
             public static string modcheckApproveName = @"/modcheckapprove {0}";
             public static string modcheckApproveUid = @"/modcheckapproveuid {0}";
             public static string modcheckApproveLast = @"/modcheckapprovelast";
-            public static string orString = @"or";
-            public static string kickTimeout = @"The player {0} ({1}) will be kicked in {2} seconds otherwise.";
+            public static string kickTimeout = @"The player {0} will be kicked in {1} seconds otherwise.";
 
             public static string blacklistKick = @"Player {0} kicked for using the following blacklisted mods:";
         }
@@ -165,6 +164,7 @@ namespace ModCheck
                     }
 
                     api.Logger.Event(string.Format(log.ToString(), byPlayer.PlayerName));
+                    api.BroadcastMessageToAllGroups(string.Format(log.ToString(), byPlayer.PlayerName), EnumChatType.AllGroups);
                     DisconnectPlayerWithFriendlyMessage(byPlayer, string.Format(log.ToString(), byPlayer.PlayerName));
                     return;
                 }
@@ -188,30 +188,35 @@ namespace ModCheck
                     {
                         disconnectMsg.Append(string.Format("Contact Server At: {0}", config.HelpLink));
                     }
+                    // TODO: Simplifie disconnect msg for client and chat
 
                     api.World.RegisterCallback(_ => {
                         if (playersToKick.Contains(byPlayer.PlayerUID))
                         {
                             playersToKick.Remove(byPlayer.PlayerUID);
                             api.Logger.Event(Logs.kickNotApproved, byPlayer.PlayerName, byPlayer.PlayerUID);
+                            api.BroadcastMessageToAllGroups(string.Format(Logs.kickNotApproved, byPlayer.PlayerName, byPlayer.PlayerUID), EnumChatType.AllGroups);
 
                             DisconnectPlayerWithFriendlyMessage(byPlayer, disconnectMsg.ToString());
                         }
                     }, 1000 * config.ClientApproveGraceSeconds);
+                    playersToKick.Add(byPlayer.PlayerUID);
                     lastPlayer = byPlayer.PlayerUID;
 
-                    api.Logger.Event(Logs.modsUnrecognized, byPlayer.PlayerName, byPlayer.PlayerUID);
+                    StringBuilder toApproveMessage = new StringBuilder(string.Format(Logs.modsUnrecognized, byPlayer.PlayerName, byPlayer.PlayerUID));
+
                     foreach (var modReport in unrecognizedReports)
                     {
-                        api.Logger.Event(modReport.GetString());
+                        toApproveMessage.AppendLine(modReport.GetString());
                     }
-                    api.Logger.Event(Logs.toAdd, byPlayer.PlayerName);
-                    api.Logger.Event(Logs.modcheckApproveUid, byPlayer.PlayerUID);
-                    api.Logger.Event(Logs.orString);
-                    api.Logger.Event(Logs.modcheckApproveName, byPlayer.PlayerName);
-                    api.Logger.Event(Logs.orString);
-                    api.Logger.Event(Logs.modcheckApproveLast);
-                    api.Logger.Event(Logs.kickTimeout, byPlayer.PlayerName, byPlayer.PlayerUID, config.ClientApproveGraceSeconds);
+                    toApproveMessage.AppendLine(string.Format(Logs.toAdd, byPlayer.PlayerName));
+                    toApproveMessage.AppendLine(string.Format(Logs.modcheckApproveUid, byPlayer.PlayerUID));
+                    toApproveMessage.AppendLine(string.Format(Logs.modcheckApproveName, byPlayer.PlayerName));
+                    toApproveMessage.AppendLine(string.Format(Logs.modcheckApproveLast));
+                    toApproveMessage.AppendLine(string.Format(Logs.kickTimeout, byPlayer.PlayerName, config.ClientApproveGraceSeconds));
+
+                    api.Logger.Event(toApproveMessage.ToString());
+                    api.BroadcastMessageToAllGroups(toApproveMessage.ToString(), EnumChatType.AllGroups);
                 }
 
                 api.ChatCommands.GetOrCreate("modcheckapprove")
@@ -290,6 +295,7 @@ namespace ModCheck
                 {
                     config.AllowedClientMods = config.AllowedClientMods.AddToArray(report);
                     allowList.AddReport(report);
+                    playersToKick.Remove(playerUid!);
                 }
                 return TextCommandResult.Success("Ok, added mods to list.");
             }

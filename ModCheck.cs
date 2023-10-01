@@ -13,7 +13,7 @@ using Vintagestory.Server;
 [assembly: ModInfo("ModCheck", 
     Side = "Universal",
     Description = "Ensures that clients only use mods approved by a server, including client-only mods.",
-    Version = "0.3.1",
+    Version = "0.3.2",
     Authors = new[] { "goxmeor", "Novocain", "Yorokobii" }
     )]
 
@@ -175,12 +175,9 @@ namespace ModCheck
                     
                     StringBuilder disconnectMsg = new StringBuilder(Lang.Get(Logs.modProblems));
 
-                    disconnectMsg.AppendLine();
-
-                    foreach (string issue in modIssuesForClient)
+                    foreach(ModCheckReport report in unrecognizedReports)
                     {
-                        disconnectMsg.AppendLine(issue);
-                        disconnectMsg.AppendLine();
+                        disconnectMsg.Append(string.Format(" {0},", report.Name));
                     }
 
                     disconnectMsg.AppendLine(config.ExtraDisconnectMessage);
@@ -188,7 +185,6 @@ namespace ModCheck
                     {
                         disconnectMsg.Append(string.Format("Contact Server At: {0}", config.HelpLink));
                     }
-                    // TODO: Simplifie disconnect msg for client and chat
 
                     api.World.RegisterCallback(_ => {
                         if (playersToKick.Contains(byPlayer.PlayerUID))
@@ -200,6 +196,7 @@ namespace ModCheck
                             DisconnectPlayerWithFriendlyMessage(byPlayer, disconnectMsg.ToString());
                         }
                     }, 1000 * config.ClientApproveGraceSeconds);
+
                     playersToKick.Add(byPlayer.PlayerUID);
                     lastPlayer = byPlayer.PlayerUID;
 

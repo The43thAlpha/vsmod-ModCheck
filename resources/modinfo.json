@@ -7,6 +7,6 @@
     "Yorokobii"
   ],
   "description": "Based on Novocain's Tegridy. Helps ensure that the client uses only mods approved by the server, including client-only mods.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "dependency": {}
 }

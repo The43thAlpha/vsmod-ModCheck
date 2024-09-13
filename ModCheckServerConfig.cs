@@ -101,6 +101,8 @@ namespace ModCheck
                 var conf = sapi?.LoadModConfig<ModCheckServerConfig>("modcheck/server.json") ?? newConfig;
 
                 clientReportGraceSeconds = conf?.clientReportGraceSeconds ?? newConfig.ClientReportGraceSeconds;
+                clientApproveGraceSeconds = conf?.clientApproveGraceSeconds ?? newConfig.ClientApproveGraceSeconds;
+                extraDisconnectMessage = conf?.extraDisconnectMessage ?? newConfig.extraDisconnectMessage;
                 allowedClientMods = conf?.allowedClientMods ?? newConfig.allowedClientMods;
                 configVersionByField = conf?.configVersionByField ?? newConfig.configVersionByField;
                 helpLink = conf?.helpLink ?? newConfig.helpLink; 
